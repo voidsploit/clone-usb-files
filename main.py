@@ -4,8 +4,8 @@ import subprocess
 import hashlib
 import requests
 
-token = 'bot-token'
-chat_id = 'chat-id'
+token = 'x'
+chat_id = 'x'
 
 def calculate_file_hash(file_path):
     hash_algo = hashlib.sha256()
