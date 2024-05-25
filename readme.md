@@ -4,12 +4,6 @@ config the main.py:
 
 token = 'BOT-TOKEN'
 chat_id = 'YOUR-CHAT-ID'
-api_key = 'API-KEY-FROM-GOFILE'
-
-You must create account for gofile before you get the api key then you create your account You can get your api token for gofile from https://gofile.io/myProfile
-
-
-After getting your api token, configure your python file open terminal and write this code: 
 
 pip install -r requeriments.txt
 
