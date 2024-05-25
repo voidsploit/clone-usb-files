@@ -6,8 +6,8 @@ import time
 import requests
 import hashlib
 
-token = '7139000080:AAEHzXtT3gUwx0UMNGQ0jtR3_eASKV73Rak'
-chat_id = '6268358898'
+token = 'bot-token'
+chat_id = 'chat-id'
 
 def start(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id, text="Bot started.")
